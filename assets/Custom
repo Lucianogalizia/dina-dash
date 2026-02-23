@@ -1,0 +1,54 @@
+/* ── DataTable estilo Streamlit ── */
+.dash-spreadsheet-container .dash-spreadsheet-inner th {
+    background-color: #f0f2f6 !important;
+    color: #1a1a1a !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    border-bottom: 2px solid #d0d0d0 !important;
+    padding: 8px 10px !important;
+}
+
+.dash-spreadsheet-container .dash-spreadsheet-inner td {
+    background-color: white !important;
+    color: #1a1a1a !important;
+    font-size: 13px !important;
+    border-bottom: 1px solid #e8e8e8 !important;
+    padding: 6px 10px !important;
+}
+
+.dash-spreadsheet-container .dash-spreadsheet-inner tr:nth-child(even) td {
+    background-color: #f8f9fa !important;
+}
+
+.dash-spreadsheet-container .dash-spreadsheet-inner tr:hover td {
+    background-color: #e8f0fe !important;
+}
+
+/* Input de filtro */
+.dash-filter input {
+    background-color: #f8f9fa !important;
+    color: #1a1a1a !important;
+    border: 1px solid #d0d0d0 !important;
+    font-size: 12px !important;
+}
+
+/* Paginacion */
+.previous-next-container, .page-number {
+    color: #1a1a1a !important;
+}
+
+/* ── RangeSlider estilo Streamlit ── */
+.rc-slider-track {
+    background-color: #e74c3c !important;
+}
+
+.rc-slider-handle {
+    border-color: #e74c3c !important;
+    background-color: #e74c3c !important;
+}
+
+.rc-slider-tooltip-inner {
+    background-color: #e74c3c !important;
+    font-weight: bold !important;
+    font-size: 12px !important;
+}
