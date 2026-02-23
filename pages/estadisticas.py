@@ -359,11 +359,8 @@ def update_snap(origenes, sum_range, est_range, bal_range):
     tabla_snap = dash_table.DataTable(
         data=df_show.pipe(_df_to_table),
         columns=[{"name":c,"id":c} for c in df_show.columns],
-        page_size=15, style_table={"overflowX":"auto"},
-        style_cell={"fontSize":"12px","padding":"6px","whiteSpace":"nowrap","border":"1px solid #e0e0e0"},
-        style_header={"fontWeight":"bold","backgroundColor":"#f0f2f6","color":"#1a1a1a","border":"1px solid #e0e0e0","whiteSpace":"nowrap"},
-        style_data={"backgroundColor":"white","color":"#1a1a1a"},
-        style_data_conditional=[{"if":{"row_index":"odd"},"backgroundColor":"#f8f9fa"}],
+        page_size=15,
+        style_table={"overflowX":"auto"},
         filter_action="native", sort_action="native",
     )
 
@@ -389,11 +386,8 @@ def update_snap(origenes, sum_range, est_range, bal_range):
     tabla_eb_div = dash_table.DataTable(
         data=eb[["NO_key","ORIGEN","%Estructura","%Balance"]].sort_values("%Estructura",na_position="last").pipe(_df_to_table),
         columns=[{"name":c,"id":c} for c in ["NO_key","ORIGEN","%Estructura","%Balance"]],
-        page_size=12, style_table={"overflowX":"auto"},
-        style_cell={"fontSize":"12px","padding":"4px"},
-        style_header={"fontWeight":"bold","backgroundColor":"#f0f2f6","color":"#1a1a1a","border":"1px solid #e0e0e0"},
-        style_data={"backgroundColor":"white","color":"#1a1a1a"},
-        style_data_conditional=[{"if":{"row_index":"odd"},"backgroundColor":"#f8f9fa"}],
+        page_size=12,
+        style_table={"overflowX":"auto"},
     ) if not eb.empty else html.P("No hay %Estructura/%Balance suficiente.") if not eb.empty else html.P("No hay %Estructura/%Balance suficiente (suelen venir solo de DIN).")
 
     # Pozos por mes
@@ -412,10 +406,8 @@ def update_snap(origenes, sum_range, est_range, bal_range):
                 dash_table.DataTable(
                     data=p_counts.to_dict("records"),
                     columns=[{"name":c,"id":c} for c in p_counts.columns],
-                    page_size=15, style_table={"overflowX":"auto"},
-                    style_cell={"fontSize":"12px","padding":"4px"},
-                    style_header={"fontWeight":"bold","backgroundColor":"#2c2c2c","color":"white"},
-                    style_data={"backgroundColor":"#1e1e1e","color":"white"},
+                    page_size=15,
+        style_table={"overflowX":"auto"},
                 )
             ])
 
@@ -442,10 +434,8 @@ def update_snap(origenes, sum_range, est_range, bal_range):
             dash_table.DataTable(
                 data=bad_sum[[c for c in ["NO_key","ORIGEN","DT_plot","PB","NM","NC","ND","Sumergencia","Sumergencia_base"] if c in bad_sum.columns]].pipe(_df_to_table),
                 columns=[{"name":c,"id":c} for c in [c for c in ["NO_key","ORIGEN","DT_plot","PB","NM","NC","ND","Sumergencia","Sumergencia_base"] if c in bad_sum.columns]],
-                page_size=10, style_table={"overflowX":"auto"},
-                style_cell={"fontSize":"11px","padding":"4px"},
-                style_header={"fontWeight":"bold","backgroundColor":"#2c2c2c","color":"white"},
-                style_data={"backgroundColor":"#1e1e1e","color":"white"},
+                page_size=10,
+        style_table={"overflowX":"auto"},
             ) if not bad_sum.empty else html.P("No hay pozos con Sumergencia < 0.") if not bad_sum.empty else html.P("No hay pozos con Sumergencia < 0.")
         ]) if not bad_sum.empty else html.P("✅ No se detectaron pozos con Sumergencia < 0."),
     ])
@@ -565,10 +555,8 @@ def update_tendencia(var, min_pts, only_up):
     tabla = dash_table.DataTable(
         data=df_tr.head(100).round(3).pipe(_df_to_table),
         columns=[{"name":c,"id":c} for c in df_tr.columns],
-        page_size=15, style_table={"overflowX":"auto"},
-        style_cell={"fontSize":"12px","padding":"4px"},
-        style_header={"fontWeight":"bold","backgroundColor":"#f0f2f6","color":"#1a1a1a","border":"1px solid #e0e0e0"},
-        style_data={"backgroundColor":"white","color":"#1a1a1a"},
+        page_size=15,
+        style_table={"overflowX":"auto"},
         sort_action="native",
     )
 
@@ -654,20 +642,16 @@ def update_aib(origenes, only_se, only_llen, sum_media, sum_alta, llen_ok, llen_
         dash_table.DataTable(
             data=crit[cols_aib].sort_values(["Sumergencia"],ascending=[False],na_position="last").pipe(_df_to_table),
             columns=[{"name":c,"id":c} for c in cols_aib],
-            page_size=15, style_table={"overflowX":"auto"},
-            style_cell={"fontSize":"11px","padding":"4px"},
-            style_header={"fontWeight":"bold","backgroundColor":"#2c2c2c","color":"white"},
-            style_data={"backgroundColor":"#1e1e1e","color":"white"},
+            page_size=15,
+        style_table={"overflowX":"auto"},
             sort_action="native",
         ) if not crit.empty else html.P("No hay pozos en 🔴 CRÍTICO con los umbrales actuales."),
         html.H5("📋 Semáforo AIB — tabla completa"),
         dash_table.DataTable(
             data=aib[cols_aib].sort_values(["Semaforo_AIB"],na_position="last").pipe(_df_to_table),
             columns=[{"name":c,"id":c} for c in cols_aib],
-            page_size=15, style_table={"overflowX":"auto"},
-            style_cell={"fontSize":"11px","padding":"4px"},
-            style_header={"fontWeight":"bold","backgroundColor":"#2c2c2c","color":"white"},
-            style_data={"backgroundColor":"#1e1e1e","color":"white"},
+            page_size=15,
+        style_table={"overflowX":"auto"},
             sort_action="native", filter_action="native",
         ) if not aib.empty else html.P("Sin datos para Semáforo AIB."),
     ])
