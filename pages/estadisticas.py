@@ -21,30 +21,30 @@ dash.register_page(__name__, path="/estadisticas", name="Estadísticas", order=2
 
 def _df_to_table(df: pd.DataFrame) -> list[dict]:
     """
-    Convierte un DataFrame a lista de dicts para DataTable de Dash.
-    - Convierte Timestamps a string legible
-    - Reemplaza NaN/NaT/None por "" (cadena vacía, no "nan")
-    - Convierte Period a string
-    - Evita tipos no serializables por JSON
+    Convierte un DataFrame a lista de dicts para Dash DataTable.
+    Maneja StringDtype, BooleanDtype, Int64Dtype y otros extension types de Pandas
+    que to_dict("records") no serializa bien (devuelven None/pd.NA en vez de "").
     """
     d = df.copy()
+    # Paso 1: convertir extension types a object nativo
     for col in d.columns:
-        # Timestamps / datetime
+        dtype = d[col].dtype
+        if isinstance(dtype, (pd.StringDtype, pd.BooleanDtype,
+                               pd.Int8Dtype,  pd.Int16Dtype,
+                               pd.Int32Dtype, pd.Int64Dtype,
+                               pd.UInt8Dtype, pd.UInt16Dtype,
+                               pd.UInt32Dtype, pd.UInt64Dtype,
+                               pd.Float32Dtype, pd.Float64Dtype)):
+            d[col] = d[col].astype(object)
+    # Paso 2: serializar por tipo
+    for col in d.columns:
         if pd.api.types.is_datetime64_any_dtype(d[col]):
             d[col] = d[col].dt.strftime("%Y-%m-%d %H:%M").where(d[col].notna(), "")
-        # Period
-        elif hasattr(d[col], "dt") and hasattr(d[col].dt, "to_timestamp"):
-            try:
-                d[col] = d[col].astype(str)
-            except Exception:
-                d[col] = d[col].apply(str)
-        # Numéricos: redondear y reemplazar NaN
         elif pd.api.types.is_float_dtype(d[col]):
             d[col] = d[col].apply(lambda x: round(x, 2) if pd.notna(x) else "")
         elif pd.api.types.is_integer_dtype(d[col]):
             d[col] = d[col].apply(lambda x: int(x) if pd.notna(x) else "")
         else:
-            # Todo lo demás: convertir a string, NaN → ""
             def _safe_str(x):
                 try:
                     return "" if pd.isna(x) else (x if isinstance(x, str) else str(x))
