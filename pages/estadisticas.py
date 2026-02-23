@@ -19,6 +19,41 @@ from utils.helpers    import find_col, build_keys, safe_to_float, compute_sumerg
 dash.register_page(__name__, path="/estadisticas", name="Estadísticas", order=2)
 
 
+def _df_to_table(df: pd.DataFrame) -> list[dict]:
+    """
+    Convierte un DataFrame a lista de dicts para DataTable de Dash.
+    - Convierte Timestamps a string legible
+    - Reemplaza NaN/NaT/None por "" (cadena vacía, no "nan")
+    - Convierte Period a string
+    - Evita tipos no serializables por JSON
+    """
+    d = df.copy()
+    for col in d.columns:
+        # Timestamps / datetime
+        if pd.api.types.is_datetime64_any_dtype(d[col]):
+            d[col] = d[col].dt.strftime("%Y-%m-%d %H:%M").where(d[col].notna(), "")
+        # Period
+        elif hasattr(d[col], "dt") and hasattr(d[col].dt, "to_timestamp"):
+            try:
+                d[col] = d[col].astype(str)
+            except Exception:
+                d[col] = d[col].apply(str)
+        # Numéricos: redondear y reemplazar NaN
+        elif pd.api.types.is_float_dtype(d[col]):
+            d[col] = d[col].apply(lambda x: round(x, 2) if pd.notna(x) else "")
+        elif pd.api.types.is_integer_dtype(d[col]):
+            d[col] = d[col].apply(lambda x: int(x) if pd.notna(x) else "")
+        else:
+            # Todo lo demás: convertir a string, NaN → ""
+            def _safe_str(x):
+                try:
+                    return "" if pd.isna(x) else (x if isinstance(x, str) else str(x))
+                except Exception:
+                    return str(x) if x is not None else ""
+            d[col] = d[col].apply(_safe_str)
+    return d.to_dict("records")
+
+
 def _get_data():
     """Carga y construye todos los datos. Retorna (snap, df_all, din_ok_ref)."""
     df_din = load_din_index()
@@ -292,7 +327,7 @@ def update_snap(origenes, sum_range, est_range, bal_range):
     ] if c in s.columns]
     df_show = s[cols_snap].sort_values(["Dias_desde_ultima"], na_position="last") if "Dias_desde_ultima" in s.columns else s[cols_snap]
     tabla_snap = dash_table.DataTable(
-        data=df_show.astype(str).to_dict("records"),
+        data=df_show.pipe(_df_to_table),
         columns=[{"name":c,"id":c} for c in df_show.columns],
         page_size=15, style_table={"overflowX":"auto"},
         style_cell={"fontSize":"12px","padding":"4px"},
@@ -320,7 +355,7 @@ def update_snap(origenes, sum_range, est_range, bal_range):
                         title="%Estructura vs %Balance (snapshot, DIN-only)", template="plotly_dark") \
              if not eb.empty else empty
     tabla_eb_div = dash_table.DataTable(
-        data=eb[["NO_key","ORIGEN","%Estructura","%Balance"]].sort_values("%Estructura",na_position="last").astype(str).to_dict("records"),
+        data=eb[["NO_key","ORIGEN","%Estructura","%Balance"]].sort_values("%Estructura",na_position="last").pipe(_df_to_table),
         columns=[{"name":c,"id":c} for c in ["NO_key","ORIGEN","%Estructura","%Balance"]],
         page_size=12, style_table={"overflowX":"auto"},
         style_cell={"fontSize":"12px","padding":"4px"},
@@ -370,7 +405,7 @@ def update_snap(origenes, sum_range, est_range, bal_range):
         html.Details([
             html.Summary(f"Ver pozos con Sumergencia < 0 ({len(bad_sum)})"),
             dash_table.DataTable(
-                data=bad_sum[[c for c in ["NO_key","ORIGEN","DT_plot","PB","NM","NC","ND","Sumergencia","Sumergencia_base"] if c in bad_sum.columns]].astype(str).to_dict("records"),
+                data=bad_sum[[c for c in ["NO_key","ORIGEN","DT_plot","PB","NM","NC","ND","Sumergencia","Sumergencia_base"] if c in bad_sum.columns]].pipe(_df_to_table),
                 columns=[{"name":c,"id":c} for c in [c for c in ["NO_key","ORIGEN","DT_plot","PB","NM","NC","ND","Sumergencia","Sumergencia_base"] if c in bad_sum.columns]],
                 page_size=10, style_table={"overflowX":"auto"}, style_cell={"fontSize":"11px"},
             ) if not bad_sum.empty else html.P("No hay pozos con Sumergencia < 0.")
@@ -490,7 +525,7 @@ def update_tendencia(var, min_pts, only_up):
     df_tr = df_tr.sort_values("pendiente_por_mes", ascending=False)
 
     tabla = dash_table.DataTable(
-        data=df_tr.head(100).round(3).astype(str).to_dict("records"),
+        data=df_tr.head(100).round(3).pipe(_df_to_table),
         columns=[{"name":c,"id":c} for c in df_tr.columns],
         page_size=15, style_table={"overflowX":"auto"},
         style_cell={"fontSize":"11px","padding":"4px"},
@@ -580,7 +615,7 @@ def update_aib(origenes, only_se, only_llen, sum_media, sum_alta, llen_ok, llen_
         dash_table.DataTable(
             data=crit[cols_aib].sort_values(["Sumergencia","Bba Llenado"] if "Bba Llenado" in crit.columns else ["Sumergencia"],
                                             ascending=[False,True] if "Bba Llenado" in crit.columns else [False],
-                                            na_position="last").astype(str).to_dict("records"),
+                                            na_position="last").pipe(_df_to_table),
             columns=[{"name":c,"id":c} for c in cols_aib],
             page_size=10, style_table={"overflowX":"auto"},
             style_cell={"fontSize":"11px","padding":"4px"},
@@ -589,7 +624,7 @@ def update_aib(origenes, only_se, only_llen, sum_media, sum_alta, llen_ok, llen_
         html.H5("📋 Semáforo AIB — tabla completa"),
         dash_table.DataTable(
             data=aib[cols_aib].sort_values(["Semaforo_AIB","Dias_desde_ultima"] if "Dias_desde_ultima" in aib.columns else ["Semaforo_AIB"],
-                                            na_position="last").astype(str).to_dict("records"),
+                                            na_position="last").pipe(_df_to_table),
             columns=[{"name":c,"id":c} for c in cols_aib],
             page_size=20, style_table={"overflowX":"auto"},
             style_cell={"fontSize":"11px","padding":"4px"},
