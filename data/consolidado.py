@@ -91,9 +91,9 @@ def build_global_consolidated(
         if c in dfp.columns:
             dfp[c] = dfp[c].apply(safe_to_float)
 
-    tmp = dfp.apply(compute_sumergencia_and_base, axis=1, result_type="expand")
-    dfp["Sumergencia"]      = tmp[0]
-    dfp["Sumergencia_base"] = tmp[1]
+    _sumer = dfp.apply(compute_sumergencia_and_base, axis=1)
+    dfp["Sumergencia"]      = _sumer.apply(lambda x: x[0] if isinstance(x, tuple) else None)
+    dfp["Sumergencia_base"] = _sumer.apply(lambda x: x[1] if isinstance(x, tuple) else None)
     dfp["DT_plot"]          = infer_dt_plot(dfp)
 
     return dfp
@@ -134,7 +134,7 @@ def build_last_snapshot_for_map(din_ok: pd.DataFrame, niv_ok: pd.DataFrame) -> p
         return pd.DataFrame()
     both = both.sort_values(["NO_key", "DT_plot"], na_position="last")
     snap = both.groupby("NO_key", as_index=False).tail(1).copy()
-    tmp  = snap.apply(compute_sumergencia_and_base, axis=1, result_type="expand")
-    snap["Sumergencia"]      = tmp[0]
-    snap["Sumergencia_base"] = tmp[1]
+    _sumer = snap.apply(compute_sumergencia_and_base, axis=1)
+    snap["Sumergencia"]      = _sumer.apply(lambda x: x[0] if isinstance(x, tuple) else None)
+    snap["Sumergencia_base"] = _sumer.apply(lambda x: x[1] if isinstance(x, tuple) else None)
     return snap.reset_index(drop=True)
