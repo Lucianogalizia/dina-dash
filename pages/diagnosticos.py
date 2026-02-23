@@ -27,37 +27,16 @@ from components.diagnosticos_logic import (
 dash.register_page(__name__, path="/diagnosticos", name="Diagnósticos", order=4)
 
 def _df_to_table(df: pd.DataFrame) -> list[dict]:
-    """
-    Convierte un DataFrame a lista de dicts para Dash DataTable.
-    Maneja StringDtype, BooleanDtype, Int64Dtype y otros extension types de Pandas
-    que to_dict("records") no serializa bien (devuelven None/pd.NA en vez de "").
-    """
+    """Convierte DataFrame a list[dict] para Dash DataTable."""
     d = df.copy()
-    # Paso 1: convertir extension types a object nativo
     for col in d.columns:
-        dtype = d[col].dtype
-        if isinstance(dtype, (pd.StringDtype, pd.BooleanDtype,
-                               pd.Int8Dtype,  pd.Int16Dtype,
-                               pd.Int32Dtype, pd.Int64Dtype,
-                               pd.UInt8Dtype, pd.UInt16Dtype,
-                               pd.UInt32Dtype, pd.UInt64Dtype,
-                               pd.Float32Dtype, pd.Float64Dtype)):
-            d[col] = d[col].astype(object)
-    # Paso 2: serializar por tipo
-    for col in d.columns:
-        if pd.api.types.is_datetime64_any_dtype(d[col]):
-            d[col] = d[col].dt.strftime("%Y-%m-%d %H:%M").where(d[col].notna(), "")
-        elif pd.api.types.is_float_dtype(d[col]):
-            d[col] = d[col].apply(lambda x: round(x, 2) if pd.notna(x) else "")
-        elif pd.api.types.is_integer_dtype(d[col]):
-            d[col] = d[col].apply(lambda x: int(x) if pd.notna(x) else "")
-        else:
-            def _safe_str(x):
-                try:
-                    return "" if pd.isna(x) else (x if isinstance(x, str) else str(x))
-                except Exception:
-                    return str(x) if x is not None else ""
-            d[col] = d[col].apply(_safe_str)
+        try:
+            if pd.api.types.is_datetime64_any_dtype(d[col]):
+                d[col] = d[col].dt.strftime("%Y-%m-%d %H:%M").fillna("")
+            else:
+                d[col] = d[col].fillna("").astype(str).replace("nan", "").replace("<NA>", "")
+        except Exception:
+            d[col] = d[col].astype(str).replace("nan", "").replace("<NA>", "")
     return d.to_dict("records")
 
 
