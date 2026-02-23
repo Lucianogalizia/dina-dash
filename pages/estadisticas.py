@@ -160,14 +160,29 @@ def layout():
                      dcc.Dropdown(id="est-origen", options=[{"label":o,"value":o} for o in origenes],
                                   value=origenes, multi=True, style={"color":"#000"})], md=3),
             dbc.Col([dbc.Label("Rango Sumergencia (snapshot)"),
-                     dcc.RangeSlider(id="est-sum-range", min=s_min, max=s_max,
-                                     value=[s_min,s_max], marks=None, tooltip={"placement":"bottom","always_visible":True})], md=3),
+                     dbc.Row([
+                         dbc.Col(html.Small(id="est-sum-min", style={"color":"#e74c3c","fontWeight":"bold"}), width="auto"),
+                         dbc.Col(dcc.RangeSlider(id="est-sum-range", min=s_min, max=s_max,
+                                     value=[s_min,s_max], marks=None,
+                                     tooltip={"placement":"bottom","always_visible":True})),
+                         dbc.Col(html.Small(id="est-sum-max", style={"color":"#e74c3c","fontWeight":"bold"}), width="auto"),
+                     ], align="center", className="g-0")], md=3),
             dbc.Col([dbc.Label("Rango %Estructura (DIN-only)"),
-                     dcc.RangeSlider(id="est-est-range", min=e_min, max=e_max,
-                                     value=[e_min,e_max], marks=None, tooltip={"placement":"bottom","always_visible":True})], md=3),
+                     dbc.Row([
+                         dbc.Col(html.Small(id="est-est-min", style={"color":"#e74c3c","fontWeight":"bold"}), width="auto"),
+                         dbc.Col(dcc.RangeSlider(id="est-est-range", min=e_min, max=e_max,
+                                     value=[e_min,e_max], marks=None,
+                                     tooltip={"placement":"bottom","always_visible":True})),
+                         dbc.Col(html.Small(id="est-est-max", style={"color":"#e74c3c","fontWeight":"bold"}), width="auto"),
+                     ], align="center", className="g-0")], md=3),
             dbc.Col([dbc.Label("Rango %Balance (DIN-only)"),
-                     dcc.RangeSlider(id="est-bal-range", min=b_min, max=b_max,
-                                     value=[b_min,b_max], marks=None, tooltip={"placement":"bottom","always_visible":True})], md=3),
+                     dbc.Row([
+                         dbc.Col(html.Small(id="est-bal-min", style={"color":"#e74c3c","fontWeight":"bold"}), width="auto"),
+                         dbc.Col(dcc.RangeSlider(id="est-bal-range", min=b_min, max=b_max,
+                                     value=[b_min,b_max], marks=None,
+                                     tooltip={"placement":"bottom","always_visible":True})),
+                         dbc.Col(html.Small(id="est-bal-max", style={"color":"#e74c3c","fontWeight":"bold"}), width="auto"),
+                     ], align="center", className="g-0")], md=3),
         ], className="mb-3"),
 
         # KPIs
@@ -273,6 +288,22 @@ def layout():
 # Callback principal: snapshot filtrado → KPIs + tabla + gráficos
 # ─────────────────────────────────────────────────────────────────────
 @callback(
+    Output("est-sum-min", "children"), Output("est-sum-max", "children"),
+    Output("est-est-min", "children"), Output("est-est-max", "children"),
+    Output("est-bal-min", "children"), Output("est-bal-max", "children"),
+    Input("est-sum-range", "value"),
+    Input("est-est-range", "value"),
+    Input("est-bal-range", "value"),
+)
+def update_slider_labels(sum_r, est_r, bal_r):
+    def fmt(v): return f"{round(v,1)}" if v is not None else ""
+    s0,s1 = (sum_r or [None,None])
+    e0,e1 = (est_r or [None,None])
+    b0,b1 = (bal_r or [None,None])
+    return fmt(s0), fmt(s1), fmt(e0), fmt(e1), fmt(b0), fmt(b1)
+
+
+@callback(
     Output("est-kpis",           "children"),
     Output("est-tabla-snap",     "children"),
     Output("est-graf-origen",    "figure"),
@@ -329,10 +360,10 @@ def update_snap(origenes, sum_range, est_range, bal_range):
         data=df_show.pipe(_df_to_table),
         columns=[{"name":c,"id":c} for c in df_show.columns],
         page_size=15, style_table={"overflowX":"auto"},
-        style_cell={"fontSize":"12px","padding":"4px","whiteSpace":"nowrap"},
-        style_header={"fontWeight":"bold","backgroundColor":"#2c2c2c","color":"white","whiteSpace":"nowrap"},
-        style_data={"backgroundColor":"#1e1e1e","color":"white"},
-        style_data_conditional=[{"if":{"row_index":"odd"},"backgroundColor":"#2a2a2a"}],
+        style_cell={"fontSize":"12px","padding":"6px","whiteSpace":"nowrap","border":"1px solid #e0e0e0"},
+        style_header={"fontWeight":"bold","backgroundColor":"#f0f2f6","color":"#1a1a1a","border":"1px solid #e0e0e0","whiteSpace":"nowrap"},
+        style_data={"backgroundColor":"white","color":"#1a1a1a"},
+        style_data_conditional=[{"if":{"row_index":"odd"},"backgroundColor":"#f8f9fa"}],
         filter_action="native", sort_action="native",
     )
 
@@ -360,9 +391,9 @@ def update_snap(origenes, sum_range, est_range, bal_range):
         columns=[{"name":c,"id":c} for c in ["NO_key","ORIGEN","%Estructura","%Balance"]],
         page_size=12, style_table={"overflowX":"auto"},
         style_cell={"fontSize":"12px","padding":"4px"},
-        style_header={"fontWeight":"bold","backgroundColor":"#2c2c2c","color":"white"},
-        style_data={"backgroundColor":"#1e1e1e","color":"white"},
-        style_data_conditional=[{"if":{"row_index":"odd"},"backgroundColor":"#2a2a2a"}],
+        style_header={"fontWeight":"bold","backgroundColor":"#f0f2f6","color":"#1a1a1a","border":"1px solid #e0e0e0"},
+        style_data={"backgroundColor":"white","color":"#1a1a1a"},
+        style_data_conditional=[{"if":{"row_index":"odd"},"backgroundColor":"#f8f9fa"}],
     ) if not eb.empty else html.P("No hay %Estructura/%Balance suficiente.") if not eb.empty else html.P("No hay %Estructura/%Balance suficiente (suelen venir solo de DIN).")
 
     # Pozos por mes
@@ -536,8 +567,8 @@ def update_tendencia(var, min_pts, only_up):
         columns=[{"name":c,"id":c} for c in df_tr.columns],
         page_size=15, style_table={"overflowX":"auto"},
         style_cell={"fontSize":"12px","padding":"4px"},
-        style_header={"fontWeight":"bold","backgroundColor":"#2c2c2c","color":"white"},
-        style_data={"backgroundColor":"#1e1e1e","color":"white"},
+        style_header={"fontWeight":"bold","backgroundColor":"#f0f2f6","color":"#1a1a1a","border":"1px solid #e0e0e0"},
+        style_data={"backgroundColor":"white","color":"#1a1a1a"},
         sort_action="native",
     )
 
