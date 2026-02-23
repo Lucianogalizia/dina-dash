@@ -1,0 +1,23 @@
+# DINA — Dash (migración desde Streamlit)
+# Mismas dependencias de datos, nueva capa de presentación
+
+# Framework web
+dash>=2.16
+dash-bootstrap-components>=1.5
+gunicorn>=21.0
+
+# Datos (sin cambios)
+pandas>=2.0
+pyarrow>=14.0
+plotly>=5.18
+openpyxl
+
+# GCS (sin cambios)
+google-cloud-storage>=2.10
+google-cloud-secret-manager>=2.16
+
+# IA (sin cambios)
+openai>=1.30
+
+# Utils
+python-dateutil>=2.8
