@@ -27,9 +27,9 @@ def _df_to_table(df: pd.DataFrame) -> list[dict]:
             if pd.api.types.is_datetime64_any_dtype(d[col]):
                 d[col] = d[col].dt.strftime("%Y-%m-%d %H:%M").fillna("")
             else:
-                d[col] = d[col].fillna("").astype(str).replace("nan", "").replace("<NA>", "")
+                d[col] = d[col].fillna("").astype(str).replace("nan","").replace("<NA>","")
         except Exception:
-            d[col] = d[col].astype(str).replace("nan", "").replace("<NA>", "")
+            d[col] = d[col].astype(str)
     return d.to_dict("records")
 
 
@@ -161,13 +161,13 @@ def layout():
                                   value=origenes, multi=True, style={"color":"#000"})], md=3),
             dbc.Col([dbc.Label("Rango Sumergencia (snapshot)"),
                      dcc.RangeSlider(id="est-sum-range", min=s_min, max=s_max,
-                                     value=[s_min,s_max], marks=None, tooltip={"placement":"bottom"})], md=3),
+                                     value=[s_min,s_max], marks=None, tooltip={"placement":"bottom","always_visible":True})], md=3),
             dbc.Col([dbc.Label("Rango %Estructura (DIN-only)"),
                      dcc.RangeSlider(id="est-est-range", min=e_min, max=e_max,
-                                     value=[e_min,e_max], marks=None, tooltip={"placement":"bottom"})], md=3),
+                                     value=[e_min,e_max], marks=None, tooltip={"placement":"bottom","always_visible":True})], md=3),
             dbc.Col([dbc.Label("Rango %Balance (DIN-only)"),
                      dcc.RangeSlider(id="est-bal-range", min=b_min, max=b_max,
-                                     value=[b_min,b_max], marks=None, tooltip={"placement":"bottom"})], md=3),
+                                     value=[b_min,b_max], marks=None, tooltip={"placement":"bottom","always_visible":True})], md=3),
         ], className="mb-3"),
 
         # KPIs
@@ -233,7 +233,7 @@ def layout():
                                   value="Sumergencia", clearable=False, style={"color":"#000"})], md=3),
             dbc.Col([dbc.Label("Mín. puntos"),
                      dcc.Slider(id="est-trend-minpts", min=2, max=20, step=1, value=4,
-                                marks=None, tooltip={"placement":"bottom"})], md=3),
+                                marks=None, tooltip={"placement":"bottom","always_visible":True})], md=3),
             dbc.Col([dbc.Label("Solo pendiente positiva"),
                      dbc.Switch(id="est-trend-only-up", value=True, label="Sí")], md=3),
         ], className="mb-2"),
@@ -325,13 +325,16 @@ def update_snap(origenes, sum_range, est_range, bal_range):
         "Polea Motor","Potencia Motor","RPM Motor","%Estructura","%Balance",
     ] if c in s.columns]
     df_show = s[cols_snap].sort_values(["Dias_desde_ultima"], na_position="last") if "Dias_desde_ultima" in s.columns else s[cols_snap]
-    tabla_snap = html.Div([
-        dbc.Table.from_dataframe(
-            df_show.head(200),
-            striped=True, bordered=True, hover=True, size="sm", responsive=True,
-            style={"fontSize":"0.8rem"}
-        )
-    ], style={"overflowX":"auto"})
+    tabla_snap = dash_table.DataTable(
+        data=df_show.pipe(_df_to_table),
+        columns=[{"name":c,"id":c} for c in df_show.columns],
+        page_size=15, style_table={"overflowX":"auto"},
+        style_cell={"fontSize":"12px","padding":"4px","whiteSpace":"nowrap"},
+        style_header={"fontWeight":"bold","backgroundColor":"#2c2c2c","color":"white","whiteSpace":"nowrap"},
+        style_data={"backgroundColor":"#1e1e1e","color":"white"},
+        style_data_conditional=[{"if":{"row_index":"odd"},"backgroundColor":"#2a2a2a"}],
+        filter_action="native", sort_action="native",
+    )
 
     # Gráficos snapshot
     fig_or  = px.bar(s.groupby("ORIGEN").size().reset_index(name="Pozos"),
@@ -352,7 +355,15 @@ def update_snap(origenes, sum_range, est_range, bal_range):
     fig_eb = px.scatter(eb, x="%Estructura", y="%Balance", hover_name="NO_key",
                         title="%Estructura vs %Balance (snapshot, DIN-only)", template="plotly_dark") \
              if not eb.empty else empty
-    tabla_eb_div = _make_table(eb[["NO_key","ORIGEN","%Estructura","%Balance"]].sort_values("%Estructura",na_position="last")) if not eb.empty else html.P("No hay %Estructura/%Balance suficiente (suelen venir solo de DIN).")
+    tabla_eb_div = dash_table.DataTable(
+        data=eb[["NO_key","ORIGEN","%Estructura","%Balance"]].sort_values("%Estructura",na_position="last").pipe(_df_to_table),
+        columns=[{"name":c,"id":c} for c in ["NO_key","ORIGEN","%Estructura","%Balance"]],
+        page_size=12, style_table={"overflowX":"auto"},
+        style_cell={"fontSize":"12px","padding":"4px"},
+        style_header={"fontWeight":"bold","backgroundColor":"#2c2c2c","color":"white"},
+        style_data={"backgroundColor":"#1e1e1e","color":"white"},
+        style_data_conditional=[{"if":{"row_index":"odd"},"backgroundColor":"#2a2a2a"}],
+    ) if not eb.empty else html.P("No hay %Estructura/%Balance suficiente.") if not eb.empty else html.P("No hay %Estructura/%Balance suficiente (suelen venir solo de DIN).")
 
     # Pozos por mes
     pozos_mes_div = html.P("Sin fechas para armar pozos por mes.")
@@ -367,7 +378,14 @@ def update_snap(origenes, sum_range, est_range, bal_range):
             pozos_mes_div = html.Div([
                 html.P(f"📌 Último mes ({last['Mes'].values[0]}): {int(last['Pozos_medidos'].values[0])} pozos medidos",
                        style={"fontWeight":"bold"}),
-                _make_table(p_counts)
+                dash_table.DataTable(
+                    data=p_counts.to_dict("records"),
+                    columns=[{"name":c,"id":c} for c in p_counts.columns],
+                    page_size=15, style_table={"overflowX":"auto"},
+                    style_cell={"fontSize":"12px","padding":"4px"},
+                    style_header={"fontWeight":"bold","backgroundColor":"#2c2c2c","color":"white"},
+                    style_data={"backgroundColor":"#1e1e1e","color":"white"},
+                )
             ])
 
     # Calidad del dato
@@ -390,7 +408,14 @@ def update_snap(origenes, sum_range, est_range, bal_range):
         ], className="mb-2"),
         html.Details([
             html.Summary(f"Ver pozos con Sumergencia < 0 ({len(bad_sum)})"),
-            _make_table(bad_sum[[c for c in ["NO_key","ORIGEN","DT_plot","PB","NM","NC","ND","Sumergencia","Sumergencia_base"] if c in bad_sum.columns]]) if not bad_sum.empty else html.P("No hay pozos con Sumergencia < 0.")
+            dash_table.DataTable(
+                data=bad_sum[[c for c in ["NO_key","ORIGEN","DT_plot","PB","NM","NC","ND","Sumergencia","Sumergencia_base"] if c in bad_sum.columns]].pipe(_df_to_table),
+                columns=[{"name":c,"id":c} for c in [c for c in ["NO_key","ORIGEN","DT_plot","PB","NM","NC","ND","Sumergencia","Sumergencia_base"] if c in bad_sum.columns]],
+                page_size=10, style_table={"overflowX":"auto"},
+                style_cell={"fontSize":"11px","padding":"4px"},
+                style_header={"fontWeight":"bold","backgroundColor":"#2c2c2c","color":"white"},
+                style_data={"backgroundColor":"#1e1e1e","color":"white"},
+            ) if not bad_sum.empty else html.P("No hay pozos con Sumergencia < 0.") if not bad_sum.empty else html.P("No hay pozos con Sumergencia < 0.")
         ]) if not bad_sum.empty else html.P("✅ No se detectaron pozos con Sumergencia < 0."),
     ])
 
@@ -506,7 +531,15 @@ def update_tendencia(var, min_pts, only_up):
         df_tr = df_tr[df_tr["pendiente_por_mes"] > 0]
     df_tr = df_tr.sort_values("pendiente_por_mes", ascending=False)
 
-    tabla = _make_table(df_tr.head(100).round(3))
+    tabla = dash_table.DataTable(
+        data=df_tr.head(100).round(3).pipe(_df_to_table),
+        columns=[{"name":c,"id":c} for c in df_tr.columns],
+        page_size=15, style_table={"overflowX":"auto"},
+        style_cell={"fontSize":"12px","padding":"4px"},
+        style_header={"fontWeight":"bold","backgroundColor":"#2c2c2c","color":"white"},
+        style_data={"backgroundColor":"#1e1e1e","color":"white"},
+        sort_action="native",
+    )
 
     topn = df_tr.head(30).copy()
     fig = px.bar(topn.sort_values("pendiente_por_mes", ascending=True),
@@ -587,7 +620,23 @@ def update_aib(origenes, only_se, only_llen, sum_media, sum_alta, llen_ok, llen_
             dbc.Col(dbc.Card(dbc.CardBody([html.H6("Sin datos"),    html.H4(int(aib_sd))])),     md=2),
         ], className="mb-3"),
         html.H5("🔴 AIB Crítico — prioridad") if not crit.empty else html.Span(),
-        _make_table(crit[cols_aib].sort_values(["Sumergencia"], ascending=[False], na_position="last")) if not crit.empty else html.P("No hay pozos en 🔴 CRÍTICO con los umbrales actuales."),
+        dash_table.DataTable(
+            data=crit[cols_aib].sort_values(["Sumergencia"],ascending=[False],na_position="last").pipe(_df_to_table),
+            columns=[{"name":c,"id":c} for c in cols_aib],
+            page_size=15, style_table={"overflowX":"auto"},
+            style_cell={"fontSize":"11px","padding":"4px"},
+            style_header={"fontWeight":"bold","backgroundColor":"#2c2c2c","color":"white"},
+            style_data={"backgroundColor":"#1e1e1e","color":"white"},
+            sort_action="native",
+        ) if not crit.empty else html.P("No hay pozos en 🔴 CRÍTICO con los umbrales actuales."),
         html.H5("📋 Semáforo AIB — tabla completa"),
-        _make_table(aib[cols_aib].sort_values(["Semaforo_AIB"], na_position="last"), max_rows=1000) if not aib.empty else html.P("Sin datos para Semáforo AIB."),
+        dash_table.DataTable(
+            data=aib[cols_aib].sort_values(["Semaforo_AIB"],na_position="last").pipe(_df_to_table),
+            columns=[{"name":c,"id":c} for c in cols_aib],
+            page_size=15, style_table={"overflowX":"auto"},
+            style_cell={"fontSize":"11px","padding":"4px"},
+            style_header={"fontWeight":"bold","backgroundColor":"#2c2c2c","color":"white"},
+            style_data={"backgroundColor":"#1e1e1e","color":"white"},
+            sort_action="native", filter_action="native",
+        ) if not aib.empty else html.P("Sin datos para Semáforo AIB."),
     ])
