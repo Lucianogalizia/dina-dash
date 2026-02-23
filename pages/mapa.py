@@ -286,7 +286,7 @@ def update_fecha_opts(pozo_sel, store_data):
     if not pozo_sel or not store_data:
         return [], None, True, ""
     try:
-        t = pd.read_json(store_data, orient="split")
+        t = pd.read_json(io.StringIO(store_data), orient="split")
     except Exception:
         return [], None, True, ""
 
