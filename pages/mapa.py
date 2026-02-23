@@ -22,21 +22,17 @@ from components.validaciones_logic import (
 
 dash.register_page(__name__, path="/mapa", name="Mapa", order=3)
 
-def _df_to_table(df):
-    """Convierte DataFrame a list[dict] para Dash DataTable, sin NaN/Timestamp."""
+def _df_to_table(df: pd.DataFrame) -> list[dict]:
+    """Convierte DataFrame a list[dict] para Dash DataTable."""
     d = df.copy()
     for col in d.columns:
-        if pd.api.types.is_datetime64_any_dtype(d[col]):
-            d[col] = d[col].dt.strftime("%Y-%m-%d %H:%M").where(d[col].notna(), "")
-        elif pd.api.types.is_float_dtype(d[col]):
-            d[col] = d[col].apply(lambda x: round(x, 2) if pd.notna(x) else "")
-        elif pd.api.types.is_integer_dtype(d[col]):
-            d[col] = d[col].apply(lambda x: int(x) if pd.notna(x) else "")
-        else:
-            def _s(x):
-                try: return "" if pd.isna(x) else (x if isinstance(x, str) else str(x))
-                except: return str(x) if x is not None else ""
-            d[col] = d[col].apply(_s)
+        try:
+            if pd.api.types.is_datetime64_any_dtype(d[col]):
+                d[col] = d[col].dt.strftime("%Y-%m-%d %H:%M").fillna("")
+            else:
+                d[col] = d[col].fillna("").astype(str).replace("nan","").replace("<NA>","")
+        except Exception:
+            d[col] = d[col].astype(str)
     return d.to_dict("records")
 
 
@@ -136,10 +132,10 @@ def layout():
                                   value=batt_opts, multi=True, style={"color":"#000"})], md=5),
             dbc.Col([dbc.Label("Rango Sumergencia"),
                      dcc.RangeSlider(id="map-sum-range", min=smin, max=smax, value=[smin,smax],
-                                     marks=None, tooltip={"placement":"bottom"})], md=4),
+                                     marks=None, tooltip={"placement":"bottom","always_visible":True})], md=4),
             dbc.Col([dbc.Label("Días desde última medición"),
                      dcc.RangeSlider(id="map-dias-range", min=dmin, max=dmax, value=[dmin,dmax],
-                                     marks=None, tooltip={"placement":"bottom"}, step=0.1)], md=3),
+                                     marks=None, tooltip={"placement":"bottom","always_visible":True}, step=0.1)], md=3),
         ], className="mb-2"),
 
         dbc.Row([
@@ -270,7 +266,17 @@ def update_mapa(batt_sel, sum_range, dias_range, filtro_val):
 
     tabla = html.Div([
         html.P(f"Total: {len(t)} pozos"),
-        _make_table(t),
+        dash_table.DataTable(
+            id="map-tabla",
+            data=t.pipe(_df_to_table),
+            columns=[{"name":c,"id":c} for c in t.columns],
+            page_size=15, style_table={"overflowX":"auto"},
+            style_cell={"fontSize":"11px","padding":"4px","whiteSpace":"nowrap"},
+            style_header={"fontWeight":"bold","backgroundColor":"#2c2c2c","color":"white"},
+            style_data={"backgroundColor":"#1e1e1e","color":"white"},
+            style_data_conditional=[{"if":{"row_index":"odd"},"backgroundColor":"#2a2a2a"}],
+            sort_action="native", filter_action="native",
+        ),
         dbc.Row([
             dbc.Col(html.A("⬇️ Descargar CSV",
                            id="map-dl-csv",
