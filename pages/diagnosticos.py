@@ -504,11 +504,8 @@ def filtrar_tabla_global(bat_sel, sev_sel, med_sel, prob_sel, store_data):
         dash_table.DataTable(
             data=df_show.pipe(_df_to_table),
             columns=[{"name":c,"id":c} for c in df_show.columns],
-            page_size=20, style_table={"overflowX":"auto"},
-            style_cell={"fontSize":"11px","padding":"6px","whiteSpace":"pre-line","border":"1px solid #e0e0e0"},
-            style_header={"fontWeight":"bold","backgroundColor":"#f0f2f6","color":"#1a1a1a","border":"1px solid #e0e0e0"},
-            style_data={"backgroundColor":"white","color":"#1a1a1a"},
-            style_data_conditional=[{"if":{"row_index":"odd"},"backgroundColor":"#f8f9fa"}],
+            page_size=20,
+        style_table={"overflowX":"auto"},
             sort_action="native", filter_action="native",
         ),
     ])
