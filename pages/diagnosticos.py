@@ -26,21 +26,45 @@ from components.diagnosticos_logic import (
 
 dash.register_page(__name__, path="/diagnosticos", name="Diagnósticos", order=4)
 
-def _df_to_table(df: pd.DataFrame) -> list[dict]:
-    """Convierte DataFrame a list[dict] para Dash DataTable."""
+def _df_to_table(df):
+    """Convierte DataFrame a list[dict] para Dash DataTable, sin NaN/Timestamp."""
     d = df.copy()
     for col in d.columns:
-        try:
-            if pd.api.types.is_datetime64_any_dtype(d[col]):
-                d[col] = d[col].dt.strftime("%Y-%m-%d %H:%M").fillna("")
-            else:
-                d[col] = d[col].fillna("").astype(str).replace("nan", "").replace("<NA>", "")
-        except Exception:
-            d[col] = d[col].astype(str).replace("nan", "").replace("<NA>", "")
+        if pd.api.types.is_datetime64_any_dtype(d[col]):
+            d[col] = d[col].dt.strftime("%Y-%m-%d %H:%M").where(d[col].notna(), "")
+        elif pd.api.types.is_float_dtype(d[col]):
+            d[col] = d[col].apply(lambda x: round(x, 2) if pd.notna(x) else "")
+        elif pd.api.types.is_integer_dtype(d[col]):
+            d[col] = d[col].apply(lambda x: int(x) if pd.notna(x) else "")
+        else:
+            def _s(x):
+                try: return "" if pd.isna(x) else (x if isinstance(x, str) else str(x))
+                except: return str(x) if x is not None else ""
+            d[col] = d[col].apply(_s)
     return d.to_dict("records")
 
 
 import os
+def _make_table(df, max_rows=500):
+    """Usa dbc.Table — sin problemas de serialización de dtypes."""
+    if df is None or (hasattr(df, 'empty') and df.empty):
+        return html.P("Sin datos.")
+    d = df.head(max_rows).copy()
+    for col in d.columns:
+        try:
+            if hasattr(d[col], 'dt') and hasattr(d[col].dt, 'strftime'):
+                d[col] = d[col].dt.strftime("%Y-%m-%d %H:%M").fillna("")
+            else:
+                d[col] = d[col].fillna("").astype(str).replace("nan","").replace("<NA>","")
+        except Exception:
+            d[col] = d[col].astype(str)
+    return html.Div(
+        dbc.Table.from_dataframe(d, striped=True, bordered=True, hover=True, size="sm", responsive=True,
+                                  style={"fontSize":"0.8rem"}),
+        style={"overflowX":"auto", "maxHeight":"400px", "overflowY":"auto"}
+    )
+
+
 GCS_BUCKET = os.environ.get("DINAS_BUCKET", "").strip()
 GCS_PREFIX = os.environ.get("DINAS_GCS_PREFIX", "").strip().strip("/")
 
@@ -481,12 +505,5 @@ def filtrar_tabla_global(bat_sel, sev_sel, med_sel, prob_sel, store_data):
     return html.Div([
         html.P(f"Mostrando {len(df_show)} mediciones ({df_f['Pozo'].nunique()} pozos)",
                style={"fontSize":"12px"}),
-        dash_table.DataTable(
-            data=df_show.pipe(_df_to_table),
-            columns=[{"name":c,"id":c} for c in df_show.columns],
-            page_size=20, style_table={"overflowX":"auto"},
-            style_cell={"fontSize":"11px","padding":"4px","whiteSpace":"pre-line"},
-            style_header={"fontWeight":"bold","backgroundColor":"#2c2c2c","color":"white"},
-            sort_action="native", filter_action="native",
-        ),
+        _make_table(df_show),
     ])
